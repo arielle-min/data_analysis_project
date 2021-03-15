@@ -1,0 +1,106 @@
+---
+title: "Data Analysis Project Pipeline"
+author: "Arielle Perreault"
+date: "3/18/2021"
+output: html_document
+---
+
+<!--- Begin styling code. --->
+<style type="text/css">
+/* Whole document: */
+body{
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  font-size: 12pt;
+}
+h1.title {
+  font-size: 38px;
+  text-align: center;
+}
+h4.author {
+  font-size: 18px;
+  text-align: center;
+}
+h4.date {
+  font-size: 18px;
+  text-align: center;
+}
+</style>
+<!--- End styling code. --->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include = FALSE}
+library(readr)
+library(dplyr)
+library(tidyverse)
+library(matrixStats)
+```
+
+## Analysis
+
+
+```{r, fig.width = 7, fig.height = 7}
+setwd("~/Winter Quater 2021/STAT302/projects/project_3/data_analysis_project")
+my_gapminder <- read_csv("data/my_gapminder.csv")
+my_penguins <- read_csv("data/my_penguins.csv")
+source("code/my_rf_cv.R")
+
+# creates empty matrices
+cv_est_mse_2 <- matrix(NA, nrow = 30) 
+cv_est_mse_5 <- matrix(NA, nrow = 30) 
+cv_est_mse_10 <- matrix(NA, nrow = 30) 
+
+# runs function 30 times
+for (i in 1:30) {
+  cv_muse_value <- my_rf_cv(2)
+  cv_est_mse_2[i] <- cv_muse_value
+}
+
+# runs function 30 times
+for (i in 1:30) {
+  cv_muse_value <- my_rf_cv(5)
+  cv_est_mse_5[i] <- cv_muse_value
+}
+
+# runs function 30 times
+for (i in 1:30) {
+  cv_muse_value <- my_rf_cv(10)
+  cv_est_mse_10[i] <- cv_muse_value
+}
+
+# creates matrix (then data frame) with values for each knn value
+k_cv_est_mse_matrix <- cbind(cv_est_mse_2, cv_est_mse_5, cv_est_mse_10)
+colnames(k_cv_est_mse_matrix) <- c("2", "5", "10")
+rownames(k_cv_est_mse_matrix) <- c(1:30)
+k_cv_est_mse_df <- as.data.frame(k_cv_est_mse_matrix)
+
+# creates a data frame with values for each knn value
+k_cv_est_mse <- data.frame("knn" = rep(c("2", "5", "10"), each = 30),
+                           "cv_est_mse"  = c(cv_est_mse_2, cv_est_mse_5, cv_est_mse_10))
+
+# creates then prints a graph displaying three boxplots
+knn_mse_box <- ggplot(k_cv_est_mse, aes(x = knn, y = cv_est_mse)) + 
+                  geom_boxplot(fill = "lightblue") +
+                  labs(title = "CV estimated MSE based on knn", 
+                       x = "knn", y = "CV estimated MSE") +
+                  theme_bw(base_size = 16, base_family = "serif") +
+                  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+print(knn_mse_box)
+
+# creates a table displaying the mean and standard deviation
+# for each of the knn values
+cv_table <- matrix(c(colMeans(cv_est_mse_2), colSds(cv_est_mse_2), 
+                     colMeans(cv_est_mse_5), colSds(cv_est_mse_5), 
+                     colMeans(cv_est_mse_10), colSds(cv_est_mse_10)), 
+                     ncol = 2, nrow = 3, byrow = TRUE)
+colnames(cv_table) <- c("mean","standard deviation")
+rownames(cv_table) <- c("knn = 2", "knn = 5", "knn = 10")
+cv_table <- as.table(cv_table)
+print(cv_table)
+
+ggsave(knn_mse_box, file = "output/figures/knn_mse_box.jpg")
+saveRDS(cv_table, file = "output/results/cv_table.rds")
+write_csv(k_cv_est_mse_df, file = "output/results/k_cv_est_mse_df.cvs")
+```
